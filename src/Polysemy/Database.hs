@@ -1,18 +1,17 @@
-{-# LANGUAGE TemplateHaskell, LambdaCase, BlockArguments, GADTs
-           , FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
+{-# LANGUAGE TemplateHaskell, BlockArguments 
+           , TypeOperators, DataKinds, PolyKinds #-}
 module Polysemy.Database
   ( runDbIO
   , selectNoTrans
   , select
+  , transact
   )
 where
 
 -- Everything for Opaleye
 import           Data.Profunctor.Product.Default
                                                 ( Default )
-import           Opaleye                        ( FromFields )
-import qualified Opaleye.Select                as Sel
-import qualified Opaleye.RunSelect             as Sel
+import qualified           Opaleye                        as O 
 import qualified Database.PostgreSQL.Simple    as PS
 
 -- Within our ecosystem
@@ -24,17 +23,20 @@ import           Polysemy.Reader
 
 data Db m a where
   -- | Select without transactions: to be used where consistency of reads is not important.
-  SelectNoTrans ::Default FromFields sql hask => Sel.Select sql -> Db m [hask]
+  SelectNoTrans ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
   -- | Select with transactions.
-  Select ::Default FromFields sql hask => Sel.Select sql -> Db m [hask]
+  Select ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
+  -- | Perform an arbitrary transaction
+  Transact ::(PS.Connection -> IO a) -> Db m a
 
 makeSem ''Db
 
 runDbIO
   :: Members '[Embed IO , Reader RT.DBRuntime] r => Sem (Db ': r) a -> Sem r a
 runDbIO = interpret $ \case
-  SelectNoTrans sel -> withRuntimeConnection (`Sel.runSelect` sel)
-  Select        sel -> withRuntimeTransaction (`Sel.runSelect` sel)
+  SelectNoTrans sel      -> withRuntimeConnection (`O.runSelect` sel)
+  Select        sel      -> withRuntimeTransaction (`O.runSelect` sel)
+  Transact      withConn -> withRuntimeTransaction withConn
 
 withRuntimeConnection
   :: Members '[Embed IO , Reader RT.DBRuntime] r
@@ -48,7 +50,5 @@ withRuntimeTransaction
   :: Members '[Embed IO , Reader RT.DBRuntime] r
   => (PS.Connection -> IO a)
   -> Sem r a
-withRuntimeTransaction withConn = do
-  rt <- ask
-  embed . RT.withConnection rt $ \conn ->
-    PS.withTransaction conn $ withConn conn
+withRuntimeTransaction withConn =
+  withRuntimeConnection $ \conn -> PS.withTransaction conn $ withConn conn
