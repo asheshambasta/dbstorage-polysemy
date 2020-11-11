@@ -1,0 +1,56 @@
+{
+    "gitignore": {
+        "branch": "master",
+        "description": "Nix function for filtering local git sources",
+        "homepage": "",
+        "owner": "hercules-ci",
+        "repo": "gitignore",
+        "rev": "c4662e662462e7bf3c2a968483478a665d00e717",
+        "sha256": "1npnx0h6bd0d7ql93ka7azhj40zgjp815fw2r6smg8ch9p7mzdlx",
+        "type": "tarball",
+        "url": "https://github.com/hercules-ci/gitignore/archive/c4662e662462e7bf3c2a968483478a665d00e717.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "niv": {
+        "branch": "master",
+        "description": "Easy dependency management for Nix projects",
+        "homepage": "https://github.com/nmattia/niv",
+        "owner": "nmattia",
+        "repo": "niv",
+        "rev": "ba57d5a29b4e0f2085917010380ef3ddc3cf380f",
+        "sha256": "1kpsvc53x821cmjg1khvp1nz7906gczq8mp83664cr15h94sh8i4",
+        "type": "tarball",
+        "url": "https://github.com/nmattia/niv/archive/ba57d5a29b4e0f2085917010380ef3ddc3cf380f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "nixos-20.03",
+        "description": "DEPRECATED! This is an obsolete, read-only mirror of the NixOS/nixpkgs repository.",
+        "homepage": "https://github.com/NixOS/nixpkgs",
+        "owner": "NixOS",
+        "repo": "nixpkgs-channels",
+        "rev": "2257e6cf4d7fe7d0618ae4a040799a8604e186e5",
+        "sha256": "06rdf5mccp15xv2ydr5y9ipbpkvs2yz9p9cv0iwik4hwm7dsld7a",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/2257e6cf4d7fe7d0618ae4a040799a8604e186e5.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "prelude-polysemy": {
+        "ref": "master",
+        "repo": "git@github.com:asheshambasta/prelude-polysemy",
+        "rev": "af662fce7d63b0be3d984aba861c01bef530c7b6",
+        "type": "git"
+    },
+    "reflex-platform": {
+        "branch": "rc/0.6.0.0",
+        "description": "A curated package set and set of tools that let you build Haskell packages so they can run on a variety of platforms. reflex-platform is built on top of the nix package manager.",
+        "homepage": "https://reflex-frp.org",
+        "owner": "reflex-frp",
+        "repo": "reflex-platform",
+        "rev": "b14992ae74cac755f0e972569434c71ad35489eb",
+        "sha256": "0znbjnzmv00mjyl2w8lpw10v9qmi5dffhzm8jqm6ypgil5xfylx3",
+        "type": "tarball",
+        "url": "https://github.com/reflex-frp/reflex-platform/archive/b14992ae74cac755f0e972569434c71ad35489eb.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
