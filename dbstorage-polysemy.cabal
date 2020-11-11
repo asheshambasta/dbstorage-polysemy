@@ -22,16 +22,34 @@ library
   build-depends: 
       base-noprelude 
     , prelude-polysemy
+    , data-default-class >= 0.1.2.0
     , monad-log 
     , polysemy
+    , text
+    , text-regex-replace
+    , lens
+    , time 
+
+    -- Config. parsing. 
+    , optparse-applicative
+
+    -- DB related dependencies
     , opaleye 
     , postgresql-simple
-    , text
-    , lens
-    , http-types >= 0.12.3
-    , pretty-simple
+    , resource-pool
 
   exposed-modules: 
+
+      Database.Storage 
+      Database.Runtime 
+
+      -- Config.
+      Database.Conf 
+      Database.Conf.Resource 
+
+      -- Misc utils. that can be of use elsewhere 
+      Database.Lib.Redact 
+
       Paths_dbstorage_polysemy
   -- other-modules: Paths_prelude
 
@@ -54,10 +72,6 @@ library
       ViewPatterns
 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind
-
-  if impl(ghcjs -any)
-    ghc-options: -dedupe
-    cpp-options: -DGHCJS_BROWSER
 
   default-language:   Haskell2010
 
