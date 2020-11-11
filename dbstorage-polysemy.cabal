@@ -21,7 +21,7 @@ library
   hs-source-dirs: src
   build-depends: 
       base-noprelude 
-    , prelude-polysemy
+    , prelude-polysemy >= 0.1.0.0 && < 1.0.0.0
     , data-default-class >= 0.1.2.0
     , monad-log 
     , polysemy
@@ -35,10 +35,14 @@ library
 
     -- DB related dependencies
     , opaleye 
+    , product-profunctors
     , postgresql-simple
     , resource-pool
 
   exposed-modules: 
+
+      -- Polysemy surface
+      Polysemy.Database
 
       Database.Storage 
       Database.Runtime 
@@ -49,7 +53,7 @@ library
 
       -- Misc utils. that can be of use elsewhere 
       Database.Lib.Redact 
-
+      
       Paths_dbstorage_polysemy
   -- other-modules: Paths_prelude
 
