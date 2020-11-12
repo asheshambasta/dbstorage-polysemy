@@ -1,11 +1,12 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, DataKinds #-}
 module Database.Storage
   ( DBIdentity(..)
+  , DBStorage(..)
   , IdMap
   )
 where
 
-import           Polysemy.Reader
+import qualified Polysemy.Database             as DB
 import           Polysemy
 
 -- | A map of all ids and the values.
@@ -32,7 +33,9 @@ class (DBIdentity stored) => DBStorage stored where
   {- | Select a list of stored values by their IDs.
      IDs missing from the DB will not be present in the map.
   -}
-  selectByIds :: (Foldable f, Functor f) => f (DBId stored) -> m (IdMap stored)
+  selectByIds :: (Foldable f, Functor f, DB.Runtime r) => f (DBId stored) -> Sem r (IdMap stored)
+
+
 
 
 
