@@ -7,6 +7,7 @@ module Polysemy.Database
   , select
   , transact
   , transactConn
+  , Transaction(..)
 
   -- ** Transactional 
   , trSelect

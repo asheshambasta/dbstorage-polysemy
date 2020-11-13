@@ -1,4 +1,7 @@
-{-# LANGUAGE TypeFamilies, DataKinds #-}
+{-# LANGUAGE TypeFamilies
+            , DataKinds
+            , TypeOperators
+#-}
 module Database.Storage
   ( DBIdentity(..)
   , DBStorage(..)
@@ -15,6 +18,9 @@ type IdMap a = Map (DBId a) a
 {- | Something that has an id and hence can be stored in the database.
 -}
 class DBIdentity stored where
+
+  type UpdateConstraints stored :: [(Type -> Type) -> Type -> Type]
+  type UpdateConstraints stored = '[]
 
   -- | The type of the ID 
   type DBId stored :: Type
@@ -34,6 +40,9 @@ class (DBIdentity stored) => DBStorage stored where
      IDs missing from the DB will not be present in the map.
   -}
   selectByIds :: (Foldable f, Functor f, DB.Runtime r) => f (DBId stored) -> Sem r (IdMap stored)
+
+  -- | Perform a DB Update.
+  dbUpdate :: Members (DB.Transaction ': UpdateConstraints stored) r => DBUpdate stored -> Sem r [DBId stored]
 
 
 
