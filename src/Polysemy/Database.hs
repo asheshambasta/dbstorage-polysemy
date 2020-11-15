@@ -5,14 +5,18 @@
   , DataKinds
   , PolyKinds
   , ConstraintKinds
+  , TypeApplications
 #-}
 module Polysemy.Database
-  ( runDbIO
-  , selectNoTrans
-  , select
+  ( -- runDbIO
+  -- , selectNoTrans
+  -- , select
   -- , transact
   -- , transactConn
-  , Transaction(..)
+  Transaction(..)
+
+  , withRuntimeConnection
+  , withRuntimeTransaction
 
   -- ** Transactional 
   , trSelect
@@ -21,9 +25,9 @@ module Polysemy.Database
   , trDelete
   , trDeleteReporting
   , trInsert
-
+  , trAbortWith
   , runTransactionEmbed
-  -- * Constriant
+  -- * $commonConstraints
   , Runtime
   , Transact
   -- * Re-exports
@@ -42,7 +46,7 @@ where
 import           Data.Profunctor.Product.Default
                                                 ( Default )
 import qualified Opaleye                       as O
-import qualified Database.PostgreSQL.Simple    as PS
+import qualified Database.PostgreSQL.Simple    as PS 
 
 -- Within our ecosystem
 import           Database.Runtime              as RT
@@ -51,6 +55,9 @@ import           Database.Runtime              as RT
 import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Reader
+
+import           Control.Exception              ( catch )
+
 
 data Transaction m a where
   TrSelect ::Default O.FromFields sql hask => O.Select sql -> Transaction m [hask]
@@ -82,16 +89,18 @@ data Transaction m a where
 
   TrInsert ::O.Insert hask -> Transaction m [hask]
 
+  TrAbortWith ::IsKnownError e => e -> Transaction m [hask]
+
   -- todo add others.
 
 makeSem ''Transaction
 
 -- | Run a bulk of operations within a transaction.
-runTransactionWithConn
-  :: Member (Embed IO) r
+prepareTransaction
+  :: Members '[Embed IO , Error KnownError] r
   => Sem (Transaction ': r) a
   -> Sem (Input PS.Connection ': r) a
-runTransactionWithConn = reinterpret $ \case
+prepareTransaction = reinterpret $ \case
 
   TrSelect sel -> withInputConn (`O.runSelect` sel)
 
@@ -106,47 +115,13 @@ runTransactionWithConn = reinterpret $ \case
   TrUpdateReturning table updateRows where' returning' -> withInputConn
     $ \conn -> O.runUpdateReturning conn table updateRows where' returning'
 
-  -- TrUpdate u -> withInputConn (`O.runUpdate` u)
-  -- do
-    -- conn <- input
-    -- embed $ withTransaction (`O.runSelect` sel) conn
-  -- where withTransaction withConn conn = PS.withTransaction conn $ withConn conn
+  TrAbortWith err -> throwKnownError err 
 
 withInputConn
   :: Member (Embed IO) r
   => (PS.Connection -> IO a)
   -> Sem (Input PS.Connection : r) a
 withInputConn withConn = input >>= embed . withConn
-
--- -- runTransactionIO :: Members '[Embed IO, Reader PS.Connection] r => Sem (Transaction ': r) a -> Sem r a 
--- -- runTransactionIO = interpret $ undefined 
--- runTransactionIO
---   :: Sem '[Transaction , Reader PS.Connection , Embed IO] a
---   -> Sem '[Reader PS.Connection , Embed IO] a
--- runTransactionIO = interpret $ undefined
-
-type Transact r = Members '[Embed IO , Reader PS.Connection] r
-
-data Db m a where
-  -- | Select without transactions: to be used where consistency of reads is not important.
-  SelectNoTrans ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
-  -- | Select with transactions.
-  Select ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
-  -- Perform an arbitrary transaction
-
-  -- TransactConn ::(PS.Connection -> IO a) -> Db m a
-  -- Transact ::Sem '[Transaction, Embed IO] a -> Db m a
-
-makeSem ''Db
-
-runDbIO
-  :: Members '[Embed IO , Reader RT.DBRuntime] r => Sem (Db ': r) a -> Sem r a
-runDbIO = interpret $ \case
-  SelectNoTrans sel      -> withRuntimeConnection (`O.runSelect` sel)
-  Select        sel      -> withRuntimeTransaction (`O.runSelect` sel)
-  -- TransactConn  withConn -> withRuntimeTransaction withConn
-  -- Transact      trans'   -> withRuntimeTransaction
-    --   $ \conn -> runM $ Polysemy.Reader.runReader conn undefined -- (runTransactionIO trans')
 
 withRuntimeConnection
   :: Members '[Embed IO , Reader RT.DBRuntime] r
@@ -157,21 +132,33 @@ withRuntimeConnection withConn = do
   embed . RT.withConnection rt $ withConn
 
 withRuntimeTransaction
-  :: Members '[Embed IO , Reader RT.DBRuntime] r
+  :: Members '[Embed IO , Reader RT.DBRuntime, Error KnownError] r
   => (PS.Connection -> IO a)
   -> Sem r a
-withRuntimeTransaction withConn =
-  withRuntimeConnection $ \conn -> PS.withTransaction conn $ withConn conn
+withRuntimeTransaction withConn = do 
+  eA <- withRuntimeConnection $ \conn -> withTransaction conn $ try @SomeException (withConn conn)
+  either throw pure eA 
 
+-- $commonConstraints
+
+type Transact r = Members '[Embed IO , Reader PS.Connection] r
 type Runtime r = Members '[Embed IO , Reader RT.DBRuntime] r
+
+-- | `PS.withTransaction` is too low-level in that it expects exceptions to be thrown in IO to abort transactions.
+-- Instead, here, we extend upon that with an IO function that instead returns an Either. 
+withTransaction
+  :: forall e a . Exception e => PS.Connection -> IO (Either e a) -> IO (Either KnownError a)
+withTransaction conn ioEither =
+  let ioThrow = ioEither >>= either throwIO (pure . Right)
+  in  PS.withTransaction conn ioThrow
+        `Control.Exception.catch` (pure . Left . KnownException @e)
 
 -- | Execute a transaction on a single connection from the DB connection pool.
 runTransactionEmbed
-  :: Members '[Embed IO , Reader RT.DBRuntime] r
+  :: forall a b r . Members '[Embed IO , Reader RT.DBRuntime , Error KnownError] r
   => Sem (Transaction : r) a
-  -> (Sem r a -> IO b)
+  -> (Sem r a -> IO (Either KnownError b))
   -> Sem r b
 runTransactionEmbed sem runSem =
-  let runSemIO conn = runSem . runInputConst conn $ runTransactionWithConn sem
-  in  withRuntimeTransaction runSemIO
-
+  let runSemIO conn = withTransaction conn . runSem . runInputConst conn $ prepareTransaction sem
+  in either throw pure =<< withRuntimeConnection runSemIO 

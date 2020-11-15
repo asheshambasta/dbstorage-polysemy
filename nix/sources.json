@@ -38,7 +38,7 @@
     "prelude-polysemy": {
         "ref": "master",
         "repo": "git@github.com:asheshambasta/prelude-polysemy",
-        "rev": "532e41c30ce08c897c247dd20314768ecb677d81",
+        "rev": "21974aad0e5f08f825bfc8e63c23718e3fc4d867",
         "type": "git"
     },
     "reflex-platform": {
