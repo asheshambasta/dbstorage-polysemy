@@ -1,6 +1,11 @@
-{-# LANGUAGE TemplateHaskell, BlockArguments 
-           , TypeOperators, DataKinds, PolyKinds
-           , ConstraintKinds #-}
+{-# LANGUAGE
+    TemplateHaskell
+  , BlockArguments 
+  , TypeOperators
+  , DataKinds
+  , PolyKinds
+  , ConstraintKinds
+#-}
 module Polysemy.Database
   ( runDbIO
   , selectNoTrans
@@ -128,6 +133,7 @@ data Db m a where
   -- | Select with transactions.
   Select ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
   -- | Perform an arbitrary transaction
+
   -- TransactConn ::(PS.Connection -> IO a) -> Db m a
   -- Transact ::Sem '[Transaction, Embed IO] a -> Db m a
 
