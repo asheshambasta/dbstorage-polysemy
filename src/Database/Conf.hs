@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE TypeApplications   #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ApplicativeDo      #-}
 {-# LANGUAGE TemplateHaskell    #-}
 module Database.Conf
   ( DBConf(..)
   , DBConnStr(..)
+  , DBConnPool
   , dbPoolConf
   , dbConnStr
   , createPoolDB
@@ -31,6 +33,8 @@ import qualified GHC.Show
 
 import           Data.Default.Class             ( Default(..) )
 import           Control.Lens                   ( makeLenses )
+
+type DBConnPool = Resource.Pool PS.Connection 
 
 -- | A configuration for DB connection strings. 
 data DBConnStr = StaticConnStr ByteString
@@ -95,7 +99,7 @@ makeLenses ''DBConf
 
 -- | Create a pool of DB conns. using a given `DBConnStr` & `PoolConf`
 createPoolDB
-  :: DBConnStr -> Resource.PoolConf -> IO (Resource.Pool PS.Connection)
+  :: DBConnStr -> Resource.PoolConf -> IO DBConnPool
 createPoolDB connStr poolConf = case connStr of
   StaticConnStr s -> mkPoolWithStr s
   -- for static env. vars, read the env. var, and bind it in the create new connection closure.
