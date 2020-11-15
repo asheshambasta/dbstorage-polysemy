@@ -5,8 +5,8 @@ module Polysemy.Database
   ( runDbIO
   , selectNoTrans
   , select
-  , transact
-  , transactConn
+  -- , transact
+  -- , transactConn
   , Transaction(..)
 
   -- ** Transactional 
@@ -16,6 +16,8 @@ module Polysemy.Database
   , trDelete
   , trDeleteReporting
   , trInsert
+
+  , runTransactionEmbed
   -- * Constriant
   , Runtime
   , Transact
@@ -74,6 +76,7 @@ data Transaction m a where
   TrDeleteReporting ::id -> O.Table a colsR -> (colsR -> O.Column O.SqlBool) -> Transaction m [id]
 
   TrInsert ::O.Insert hask -> Transaction m [hask]
+
   -- todo add others.
 
 makeSem ''Transaction
@@ -110,12 +113,12 @@ withInputConn
   -> Sem (Input PS.Connection : r) a
 withInputConn withConn = input >>= embed . withConn
 
--- runTransactionIO :: Members '[Embed IO, Reader PS.Connection] r => Sem (Transaction ': r) a -> Sem r a 
--- runTransactionIO = interpret $ undefined 
-runTransactionIO
-  :: Sem '[Transaction , Reader PS.Connection , Embed IO] a
-  -> Sem '[Reader PS.Connection , Embed IO] a
-runTransactionIO = interpret $ undefined
+-- -- runTransactionIO :: Members '[Embed IO, Reader PS.Connection] r => Sem (Transaction ': r) a -> Sem r a 
+-- -- runTransactionIO = interpret $ undefined 
+-- runTransactionIO
+--   :: Sem '[Transaction , Reader PS.Connection , Embed IO] a
+--   -> Sem '[Reader PS.Connection , Embed IO] a
+-- runTransactionIO = interpret $ undefined
 
 type Transact r = Members '[Embed IO , Reader PS.Connection] r
 
@@ -125,8 +128,8 @@ data Db m a where
   -- | Select with transactions.
   Select ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
   -- | Perform an arbitrary transaction
-  TransactConn ::(PS.Connection -> IO a) -> Db m a
-  Transact ::Sem '[Transaction, Reader PS.Connection, Embed IO] a -> Db m a
+  -- TransactConn ::(PS.Connection -> IO a) -> Db m a
+  -- Transact ::Sem '[Transaction, Embed IO] a -> Db m a
 
 makeSem ''Db
 
@@ -135,9 +138,9 @@ runDbIO
 runDbIO = interpret $ \case
   SelectNoTrans sel      -> withRuntimeConnection (`O.runSelect` sel)
   Select        sel      -> withRuntimeTransaction (`O.runSelect` sel)
-  TransactConn  withConn -> withRuntimeTransaction withConn
-  Transact      trans'   -> withRuntimeTransaction
-    $ \conn -> runM $ Polysemy.Reader.runReader conn (runTransactionIO trans')
+  -- TransactConn  withConn -> withRuntimeTransaction withConn
+  -- Transact      trans'   -> withRuntimeTransaction
+    -- $ \conn -> runM $ Polysemy.Reader.runReader conn undefined -- (runTransactionIO trans')
 
 withRuntimeConnection
   :: Members '[Embed IO , Reader RT.DBRuntime] r
@@ -157,12 +160,12 @@ withRuntimeTransaction withConn =
 type Runtime r = Members '[Embed IO , Reader RT.DBRuntime] r
 
 -- | Execute a transaction on a single connection from the DB connection pool.
-runTransaction
+runTransactionEmbed
   :: Members '[Embed IO , Reader RT.DBRuntime] r
   => Sem (Transaction : r) a
   -> (Sem r a -> IO b)
   -> Sem r b
-runTransaction sem runSem =
+runTransactionEmbed sem runSem =
   let runSemIO conn = runSem . runInputConst conn $ runTransactionWithConn sem
   in  withRuntimeTransaction runSemIO
 

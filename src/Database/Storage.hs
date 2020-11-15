@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies
             , DataKinds
             , TypeOperators
+            , UndecidableInstances
 #-}
 module Database.Storage
   ( -- $ident
@@ -9,6 +10,9 @@ module Database.Storage
   , DBStorage(..)
   , IdMap
   , mkIdMap
+  -- $convenienceConstraints
+  , SelectOf
+  , UpdateOf
   )
 where
 
@@ -54,15 +58,20 @@ class (DBIdentity stored) => DBStorage stored where
   {- | Select a list of stored values by their IDs.
      IDs missing from the DB will not be present in the map.
   -}
-  selectByIds :: (Foldable f, Functor f, Members (DB.Transaction ': SelectConstraints stored) r) => f (DBId stored) -> Sem r (IdMap stored)
+  selectByIds :: (Foldable f, Functor f, SelectOf stored r) => f (DBId stored) -> Sem r (IdMap stored)
 
   -- | DBSelect 
-  dbSelect :: Members (DB.Transaction ': SelectConstraints stored) r => DBSelect stored -> Sem r (IdMap stored)
+  dbSelect :: SelectOf stored r => DBSelect stored -> Sem r (IdMap stored)
 
   -- | Perform a DB Update.
-  dbUpdate :: Members (DB.Transaction ': UpdateConstraints stored) r => DBUpdate stored -> Sem r [DBId stored]
+  dbUpdate :: UpdateOf stored r => DBUpdate stored -> Sem r [DBId stored]
 
+-- $convenienceConstraints Constraints for convenience around typing.
 
+-- | The full set of constraints required to perform Selects.
+type family SelectOf stored r :: Constraint where
+  SelectOf stored r = Members (DB.Transaction : SelectConstraints stored) r
 
-
-
+-- | The full set of constraints required to perform Updates.
+type family UpdateOf stored r :: Constraint where
+  UpdateOf stored r = Members (DB.Transaction : UpdateConstraints stored) r
