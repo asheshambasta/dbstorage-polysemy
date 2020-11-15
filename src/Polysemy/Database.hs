@@ -11,7 +11,7 @@ module Polysemy.Database
 
   -- ** Transactional 
   , trSelect
-  , trUpdate
+  , trUpdateReturning
   , trDelete
   , trInsert
   -- * Constriant
@@ -40,16 +40,47 @@ import           Database.Runtime              as RT
 
 -- Polysemy
 import           Polysemy
+import           Polysemy.Input
 import           Polysemy.Reader
 
 data Transaction m a where
   TrSelect ::Default O.FromFields sql hask => O.Select sql -> Transaction m [hask]
-  TrUpdate ::O.Update hask -> Transaction m [hask]
+
+  -- | Update a row returning some function of columns from the affected rows.
+  TrUpdateReturning ::Default O.QueryRunner colsReturned hask
+    => O.Table colsW colsR -- ^ Target table
+    -> (colsR -> colsW)  -- ^ Update function
+    -> (colsR -> O.Column O.SqlBool) -- ^ WHERE 
+    -> (colsR -> colsReturned) -- ^ Extract return values from affected rows.
+    -> Transaction m [hask]
+
   TrDelete ::O.Delete hask -> Transaction m [hask]
   TrInsert ::O.Insert hask -> Transaction m [hask]
   -- todo add others.
 
 makeSem ''Transaction
+
+-- | Run a bulk of operations within a transaction.
+runTransactionWithConn
+  :: Member (Embed IO) r
+  => Sem (Transaction ': r) a
+  -> Sem (Input PS.Connection ': r) a
+runTransactionWithConn = reinterpret $ \case
+  TrSelect sel -> withInputConn (`O.runSelect` sel)
+
+  TrUpdateReturning table updateRows where' returning' -> withInputConn
+    $ \conn -> O.runUpdateReturning conn table updateRows where' returning'
+  -- TrUpdate u -> withInputConn (`O.runUpdate` u)
+  -- do
+    -- conn <- input
+    -- embed $ withTransaction (`O.runSelect` sel) conn
+  -- where withTransaction withConn conn = PS.withTransaction conn $ withConn conn
+
+withInputConn
+  :: Member (Embed IO) r
+  => (PS.Connection -> IO a)
+  -> Sem (Input PS.Connection : r) a
+withInputConn withConn = input >>= embed . withConn
 
 -- runTransactionIO :: Members '[Embed IO, Reader PS.Connection] r => Sem (Transaction ': r) a -> Sem r a 
 -- runTransactionIO = interpret $ undefined 
@@ -96,3 +127,14 @@ withRuntimeTransaction withConn =
   withRuntimeConnection $ \conn -> PS.withTransaction conn $ withConn conn
 
 type Runtime r = Members '[Embed IO , Reader RT.DBRuntime] r
+
+-- | Execute a transaction on a single connection from the DB connection pool.
+runTransaction
+  :: Members '[Embed IO , Reader RT.DBRuntime] r
+  => Sem (Transaction : r) a
+  -> (Sem r a -> IO b)
+  -> Sem r b
+runTransaction sem runSem =
+  let runSemIO conn = runSem . runInputConst conn $ runTransactionWithConn sem
+  in  withRuntimeTransaction runSemIO
+
