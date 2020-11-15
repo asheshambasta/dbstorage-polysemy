@@ -14,6 +14,7 @@ module Polysemy.Database
   , trUpdateReturning
   , trInsertManyReturning
   , trDelete
+  , trDeleteReporting
   , trInsert
   -- * Constriant
   , Runtime
@@ -70,6 +71,8 @@ data Transaction m a where
 
   TrDelete ::O.Table a colsR -> (colsR -> O.Column O.SqlBool) -> Transaction m Int64
 
+  TrDeleteReporting ::id -> O.Table a colsR -> (colsR -> O.Column O.SqlBool) -> Transaction m [id]
+
   TrInsert ::O.Insert hask -> Transaction m [hask]
   -- todo add others.
 
@@ -89,6 +92,8 @@ runTransactionWithConn = reinterpret $ \case
 
   TrDelete table where' ->
     withInputConn $ \conn -> O.runDelete conn table where'
+  TrDeleteReporting id table where' -> withInputConn $ \conn ->
+    O.runDelete conn table where' <&> flip replicate id . fromIntegral
 
   TrUpdateReturning table updateRows where' returning' -> withInputConn
     $ \conn -> O.runUpdateReturning conn table updateRows where' returning'
