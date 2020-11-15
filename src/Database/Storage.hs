@@ -40,6 +40,8 @@ class DBIdentity stored where
 
 class (DBIdentity stored) => DBStorage stored where
 
+  -- | The available db selects.
+  data DBSelect stored
   -- | The available db updates.
   data DBUpdate stored
 
@@ -50,6 +52,9 @@ class (DBIdentity stored) => DBStorage stored where
      IDs missing from the DB will not be present in the map.
   -}
   selectByIds :: (Foldable f, Functor f, Members (DB.Transaction ': SelectConstraints stored) r) => f (DBId stored) -> Sem r (IdMap stored)
+
+  -- | DBSelect 
+  dbSelect :: Members (DB.Transaction ': SelectConstraints stored) r => DBSelect stored -> Sem r (IdMap stored)
 
   -- | Perform a DB Update.
   dbUpdate :: Members (DB.Transaction ': UpdateConstraints stored) r => DBUpdate stored -> Sem r [DBId stored]
