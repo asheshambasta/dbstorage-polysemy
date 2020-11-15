@@ -56,11 +56,10 @@ data Transaction m a where
     -> Transaction m [hask]
 
   TrInsertManyReturning ::Default O.QueryRunner colsReturned hask
-                        => O.Table colsW colsR -- ^ Table to insert into 
-                        -> [colsW] -- ^ Rows to insert 
-                        -> (colsR -> colsReturned) -- ^ Get affected cols, one wishes to report.
-                        -> Transaction m [hask]
-
+    => O.Table colsW colsR -- ^ Table to insert into 
+    -> [colsW] -- ^ Rows to insert 
+    -> (colsR -> colsReturned) -- ^ Get affected cols, one wishes to report.
+    -> Transaction m [hask]
 
   -- TrDeleteReturning
   --   ::Default O.QueryRunner columnsReturned hask

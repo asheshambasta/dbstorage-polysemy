@@ -3,7 +3,9 @@
             , TypeOperators
 #-}
 module Database.Storage
-  ( DBIdentity(..)
+  ( -- $ident
+    DBIdentity(..)
+  -- $storage
   , DBStorage(..)
   , IdMap
   , mkIdMap
@@ -20,9 +22,18 @@ type IdMap a = M.Map (DBId a) a
 mkIdMap :: (DBStorage a, Ord (DBId a), Foldable f) => f a -> IdMap a
 mkIdMap = foldl' add' mempty where add' acc a = M.insert (dbId a) a acc
 
-{- | Something that has an id and hence can be stored in the database.
--}
+-- $ident Something that has an id and hence can be stored in the database.
 class DBIdentity stored where
+
+  -- | The type of the ID 
+  type DBId stored :: Type
+
+  -- | Get an ID from a value.
+  dbId :: stored -> DBId stored
+
+-- $storage
+-- This typeclass dictates the storage related behaviour of its instances.
+class (DBIdentity stored) => DBStorage stored where
 
   -- | Additonal constraints Updates need. 
   type UpdateConstraints stored :: [(Type -> Type) -> Type -> Type]
@@ -31,14 +42,6 @@ class DBIdentity stored where
   -- | Additonal constraints Selects need. 
   type SelectConstraints stored :: [(Type -> Type) -> Type -> Type]
   type SelectConstraints stored = '[]
-
-  -- | The type of the ID 
-  type DBId stored :: Type
-
-  -- | Get an ID from a value.
-  dbId :: stored -> DBId stored
-
-class (DBIdentity stored) => DBStorage stored where
 
   -- | The available db selects.
   data DBSelect stored
