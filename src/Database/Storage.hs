@@ -19,8 +19,13 @@ type IdMap a = Map (DBId a) a
 -}
 class DBIdentity stored where
 
+  -- | Additonal constraints Updates need. 
   type UpdateConstraints stored :: [(Type -> Type) -> Type -> Type]
   type UpdateConstraints stored = '[]
+
+  -- | Additonal constraints Selects need. 
+  type SelectConstraints stored :: [(Type -> Type) -> Type -> Type]
+  type SelectConstraints stored = '[]
 
   -- | The type of the ID 
   type DBId stored :: Type
@@ -39,7 +44,7 @@ class (DBIdentity stored) => DBStorage stored where
   {- | Select a list of stored values by their IDs.
      IDs missing from the DB will not be present in the map.
   -}
-  selectByIds :: (Foldable f, Functor f, DB.Runtime r) => f (DBId stored) -> Sem r (IdMap stored)
+  selectByIds :: (Foldable f, Functor f, Members (DB.Transaction ': SelectConstraints stored) r) => f (DBId stored) -> Sem r (IdMap stored)
 
   -- | Perform a DB Update.
   dbUpdate :: Members (DB.Transaction ': UpdateConstraints stored) r => DBUpdate stored -> Sem r [DBId stored]
