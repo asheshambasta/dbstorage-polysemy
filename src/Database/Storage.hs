@@ -6,14 +6,19 @@ module Database.Storage
   ( DBIdentity(..)
   , DBStorage(..)
   , IdMap
+  , mkIdMap
   )
 where
 
+import qualified Data.Map                      as M
 import qualified Polysemy.Database             as DB
 import           Polysemy
 
 -- | A map of all ids and the values.
-type IdMap a = Map (DBId a) a
+type IdMap a = M.Map (DBId a) a
+
+mkIdMap :: (DBStorage a, Ord (DBId a), Foldable f) => f a -> IdMap a
+mkIdMap = foldl' add' mempty where add' acc a = M.insert (dbId a) a acc
 
 {- | Something that has an id and hence can be stored in the database.
 -}
