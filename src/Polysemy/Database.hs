@@ -132,7 +132,7 @@ data Db m a where
   SelectNoTrans ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
   -- | Select with transactions.
   Select ::Default O.FromFields sql hask => O.Select sql -> Db m [hask]
-  -- | Perform an arbitrary transaction
+  -- Perform an arbitrary transaction
 
   -- TransactConn ::(PS.Connection -> IO a) -> Db m a
   -- Transact ::Sem '[Transaction, Embed IO] a -> Db m a
