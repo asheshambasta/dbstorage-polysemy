@@ -12,6 +12,7 @@ module Polysemy.Database
   -- ** Transactional 
   , trSelect
   , trUpdateReturning
+  , trInsertManyReturning
   , trDelete
   , trInsert
   -- * Constriant
@@ -54,7 +55,22 @@ data Transaction m a where
     -> (colsR -> colsReturned) -- ^ Extract return values from affected rows.
     -> Transaction m [hask]
 
-  TrDelete ::O.Delete hask -> Transaction m [hask]
+  TrInsertManyReturning ::Default O.QueryRunner colsReturned hask
+                        => O.Table colsW colsR -- ^ Table to insert into 
+                        -> [colsW] -- ^ Rows to insert 
+                        -> (colsR -> colsReturned) -- ^ Get affected cols, one wishes to report.
+                        -> Transaction m [hask]
+
+
+  -- TrDeleteReturning
+  --   ::Default O.QueryRunner columnsReturned hask
+  --   => O.Table a columnsR
+  --   -> (columnsR -> O.Column O.SqlBool)
+  --   -> (columnsR -> columnsReturned)
+  --   -> Transaction m [hask]
+
+  TrDelete ::O.Table a colsR -> (colsR -> O.Column O.SqlBool) -> Transaction m Int64
+
   TrInsert ::O.Insert hask -> Transaction m [hask]
   -- todo add others.
 
@@ -66,10 +82,18 @@ runTransactionWithConn
   => Sem (Transaction ': r) a
   -> Sem (Input PS.Connection ': r) a
 runTransactionWithConn = reinterpret $ \case
+
   TrSelect sel -> withInputConn (`O.runSelect` sel)
+
+  TrInsertManyReturning table rows returning' ->
+    withInputConn $ \conn -> O.runInsertManyReturning conn table rows returning'
+
+  TrDelete table where' ->
+    withInputConn $ \conn -> O.runDelete conn table where'
 
   TrUpdateReturning table updateRows where' returning' -> withInputConn
     $ \conn -> O.runUpdateReturning conn table updateRows where' returning'
+
   -- TrUpdate u -> withInputConn (`O.runUpdate` u)
   -- do
     -- conn <- input
