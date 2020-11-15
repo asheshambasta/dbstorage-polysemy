@@ -146,7 +146,7 @@ runDbIO = interpret $ \case
   Select        sel      -> withRuntimeTransaction (`O.runSelect` sel)
   -- TransactConn  withConn -> withRuntimeTransaction withConn
   -- Transact      trans'   -> withRuntimeTransaction
-    -- $ \conn -> runM $ Polysemy.Reader.runReader conn undefined -- (runTransactionIO trans')
+    --   $ \conn -> runM $ Polysemy.Reader.runReader conn undefined -- (runTransactionIO trans')
 
 withRuntimeConnection
   :: Members '[Embed IO , Reader RT.DBRuntime] r
