@@ -7,6 +7,7 @@ module Database.Conf
   ( DBConf(..)
   , DBConnStr(..)
   , DBConnPool
+  , DBError(..)
   , dbPoolConf
   , dbConnStr
   , createPoolDB
